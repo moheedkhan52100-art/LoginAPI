@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Login | Nexus API</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f7fc;
+        }
+        .login-right {
+            width: min(100%, 480px);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 35px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .login-card h2 {
+            font-size: 30px;
+            color: #17233e;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #758098;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 9px;
+            color: #25314a;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #dce2ee;
+            border-radius: 9px;
+            font-size: 15px;
+            outline: none;
+            background: white;
+        }
+
+        .form-group input:focus {
+            border-color: #4169e1;
+            box-shadow: 0 0 0 3px #4169e11a;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 65px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: #4169e1;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            background: #4169e1;
+            color: white;
+            border: none;
+            border-radius: 9px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+
+        .login-button:hover {
+            background: #2f50bd;
+            transform: translateY(-1px);
+        }
+
+        .login-button:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        #message {
+            font-size: 14px;
+            margin-top: 16px;
+            line-height: 1.5;
+        }
+
+        .register-link {
+            text-align: center;
+            color: #758098;
+            font-size: 14px;
+            margin-top: 25px;
+        }
+
+        .register-link a {
+            color: #4169e1;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        @media (max-width: 800px) {
+            .login-right {
+                width: 100%;
+                padding: 40px 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<section class="login-right">
+        <div class="login-card">
+
+            <h2>Welcome back</h2>
+
+            <p class="subtitle">
+                Sign in to access your personal API dashboard.
+            </p>
+
+            <form id="loginForm">
+
+                <div class="form-group">
+                    <label for="email">Email address</label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        placeholder="you@example.com"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+
+                    <div class="password-wrapper">
+                        <input
+                            type="password"
+                            id="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            id="togglePassword"
+                        >Show</button>
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    class="login-button"
+                    id="loginButton"
+                >
+                    Sign In
+                </button>
+
+                <p id="message" role="alert"></p>
+
+            </form>
+
+            <p class="register-link">
+                Don't have an account?
+                <a href="/register">Create an account</a>
+            </p>
+
+        </div>
+    </section>
+
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const message = document.getElementById("message");
+        const loginButton = document.getElementById("loginButton");
+        const passwordInput = document.getElementById("password");
+
+        document.getElementById("togglePassword")
+            .addEventListener("click", function () {
+                const isPassword = passwordInput.type === "password";
+
+                passwordInput.type = isPassword ? "text" : "password";
+                this.textContent = isPassword ? "Hide" : "Show";
+            });
+
+        loginForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            message.textContent = "";
+            message.style.color = "#d93025";
+            loginButton.disabled = true;
+            loginButton.textContent = "Signing in...";
+
+            try {
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        email: document.getElementById("email").value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    message.textContent =
+                        data.message || "Unable to sign in.";
+                    return;
+                }
+
+                window.location.replace("/dashboard");
+
+            } catch (error) {
+                message.textContent =
+                    "Cannot connect to the server. Please try again.";
+            } finally {
+                loginButton.disabled = false;
+                loginButton.textContent = "Sign In";
+            }
+        });
+    </script>
+
+</body>
+</html>
+
+
+

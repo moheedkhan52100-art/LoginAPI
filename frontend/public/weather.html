@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather | Nexus API</title>
+    <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body class="tool-page">
+<main class="main-content">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">FREE API &middot; OPEN-METEO</p>
+            <h1>Weather Explorer</h1>
+        </div>
+        <div class="topbar-actions">
+            <a class="back-button" href="/dashboard">&larr; Back</a>
+            <button id="logoutButton" class="logout-button">Log out</button>
+        </div>
+    </header>
+    <div class="search-bar">
+        <input id="city" type="text" placeholder="Enter a city, e.g. Lahore">
+        <button id="searchBtn" class="primary-button">Search</button>
+    </div>
+    <p id="status" class="status-message"></p>
+    <button id="browseCountriesButton" class="secondary-button" type="button" hidden>Browse all countries</button>
+    <section id="countryBrowser" class="country-browser" aria-labelledby="countryBrowserTitle">
+        <div class="country-browser-heading">
+            <h2 id="countryBrowserTitle">Weather by country</h2>
+            <p>Select a country to see current weather for its capital.</p>
+        </div>
+        <p id="countryStatus" class="status-message">Loading countries...</p>
+        <div id="countryList" class="weather-country-list"></div>
+    </section>
+    <div id="result"></div>
+    <footer class="footer">
+        <span>Nexus API Dashboard</span>
+        <span>Protected by session authentication</span>
+    </footer>
+</main>
+<script src="/dashboard.js"></script>
+<script>
+const CODES = {0:["Clear sky","\u2600\uFE0F"],1:["Mostly clear","\u{1F324}\uFE0F"],2:["Partly cloudy","\u26C5"],3:["Overcast","\u2601\uFE0F"],45:["Fog","\u{1F32B}\uFE0F"],48:["Fog","\u{1F32B}\uFE0F"],51:["Light drizzle","\u{1F326}\uFE0F"],53:["Drizzle","\u{1F326}\uFE0F"],55:["Heavy drizzle","\u{1F327}\uFE0F"],61:["Light rain","\u{1F327}\uFE0F"],63:["Rain","\u{1F327}\uFE0F"],65:["Heavy rain","\u{1F327}\uFE0F"],71:["Light snow","\u{1F328}\uFE0F"],73:["Snow","\u2744\uFE0F"],75:["Heavy snow","\u2744\uFE0F"],80:["Rain showers","\u{1F326}\uFE0F"],81:["Rain showers","\u{1F327}\uFE0F"],82:["Violent showers","\u26C8\uFE0F"],95:["Thunderstorm","\u26C8\uFE0F"],96:["Thunderstorm, hail","\u26C8\uFE0F"],99:["Thunderstorm, hail","\u26C8\uFE0F"]};
+const info = (c) => CODES[c] || ["Unknown","\u{1F321}\uFE0F"];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+const btn = document.getElementById("searchBtn");
+const cityInput = document.getElementById("city");
+const countryBrowser = document.getElementById("countryBrowser");
+const countryStatus = document.getElementById("countryStatus");
+const countryList = document.getElementById("countryList");
+const browseCountriesButton = document.getElementById("browseCountriesButton");
+
+async function loadCountries() {
+    countryStatus.textContent = "Loading country list...";
+    try {
+        const response = await fetch("/api/countries", { credentials: "same-origin" });
+        if (response.status === 401) { location.replace("/login"); return; }
+        const countries = await response.json();
+        if (!response.ok) throw new Error(countries.message || "Could not load countries.");
+        countryStatus.textContent = countries.length + " countries. Choose one to see its capital weather.";
+        countryList.innerHTML = countries.map((country) => {
+            const name = country.name.common;
+            const capital = Array.isArray(country.capital) ? country.capital[0] : "";
+            const searchText = (name + " " + capital).toLocaleLowerCase();
+            return '<button type="button" class="weather-country-option" data-capital="' + esc(capital) +
+                '" data-search="' + esc(searchText) + '"' + (capital ? "" : " disabled") + '>' +
+                '<strong>' + esc(name) + '</strong><span>' +
+                (capital ? "Capital: " + esc(capital) : "No capital listed") + '</span></button>';
+        }).join("");
+    } catch (error) {
+        countryStatus.className = "status-message error";
+        countryStatus.textContent = error.message || "Could not load the country list.";
+    }
+}
+async function search() {
+    const city = document.getElementById("city").value.trim();
+    if (!city) { resultEl.innerHTML = ""; statusEl.textContent = "Enter a city or choose a country."; return; }
+    countryBrowser.hidden = true;
+    browseCountriesButton.hidden = false;
+    btn.disabled = true;
+    statusEl.className = "status-message";
+    statusEl.textContent = "Loading...";
+    resultEl.innerHTML = "";
+    try {
+        const res = await fetch("/api/weather?city=" + encodeURIComponent(city), { credentials: "same-origin" });
+        if (res.status === 401) { location.replace("/login"); return; }
+        const data = await res.json();
+        if (!res.ok) { statusEl.className = "status-message error"; statusEl.textContent = data.message; return; }
+        statusEl.textContent = "";
+        const c = data.current, d = data.daily;
+        const [desc, emoji] = info(c.weather_code);
+        const place = [data.place.name, data.place.region, data.place.country].filter(Boolean).join(", ");
+        const days = d.time.map((t, i) => {
+            const [, e] = info(d.weather_code[i]);
+            const name = new Date(t + "T00:00").toLocaleDateString(undefined, { weekday: "short" });
+            return `<div class="forecast-day"><div class="day">${name}</div><div class="emoji">${e}</div><div class="range">${Math.round(d.temperature_2m_max[i])}\u00B0 / ${Math.round(d.temperature_2m_min[i])}\u00B0</div></div>`;
+        }).join("");
+        resultEl.innerHTML = `<div class="panel">
+            <div class="weather-now"><div class="weather-emoji">${emoji}</div>
+            <div><div class="weather-temp">${Math.round(c.temperature_2m)}\u00B0C</div></div>
+            <div><div class="weather-place">${esc(place)}</div><div class="weather-desc">${desc}</div></div></div>
+            <div class="stat-grid">
+                <div class="stat"><small>Feels like</small><strong>${Math.round(c.apparent_temperature)}\u00B0C</strong></div>
+                <div class="stat"><small>Humidity</small><strong>${c.relative_humidity_2m}%</strong></div>
+                <div class="stat"><small>Wind speed</small><strong>${c.wind_speed_10m} km/h</strong></div>
+            </div>
+            <div class="forecast">${days}</div></div>`;
+    } catch (e) {
+        statusEl.className = "status-message error";
+        statusEl.textContent = "Could not reach the server.";
+    } finally { btn.disabled = false; }
+}
+btn.addEventListener("click", search);
+cityInput.addEventListener("keydown", (event) => { if (event.key === "Enter") search(); });
+cityInput.addEventListener("input", () => {
+    if (countryBrowser.hidden) return;
+    const query = cityInput.value.trim().toLocaleLowerCase();
+    let visible = 0;
+    countryList.querySelectorAll(".weather-country-option").forEach((option) => {
+        option.hidden = Boolean(query) && !option.dataset.search.includes(query);
+        if (!option.hidden) visible += 1;
+    });
+    countryStatus.textContent = query
+        ? visible + " matching country or capital. Press Search to check any city."
+        : countryList.children.length + " countries. Choose one to see its capital weather.";
+});
+countryList.addEventListener("click", (event) => {
+    const option = event.target.closest(".weather-country-option");
+    if (!option || option.disabled) return;
+    cityInput.value = option.dataset.capital;
+    search();
+});
+browseCountriesButton.addEventListener("click", () => {
+    resultEl.innerHTML = "";
+    cityInput.value = "";
+    countryBrowser.hidden = false;
+    browseCountriesButton.hidden = true;
+    statusEl.textContent = "Select a country or search for a city.";
+    cityInput.focus();
+});
+statusEl.textContent = "Select a country or search for a city.";
+loadCountries();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+

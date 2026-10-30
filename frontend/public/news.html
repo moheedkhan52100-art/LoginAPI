@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News | Nexus API</title>
+    <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body class="tool-page">
+<main class="main-content">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">FREE FEED Â· BBC NEWS</p>
+            <h1>World News</h1>
+        </div>
+        <div class="topbar-actions">
+            <a class="back-button" href="/dashboard">&larr; Back</a>
+            <button id="logoutButton" class="logout-button">Log out</button>
+        </div>
+    </header>
+    <div class="search-bar">
+        <input id="newsQuery" type="search" placeholder="Search news by topic or keyword">
+        <button id="newsSearchButton" class="primary-button" type="button">Search</button>
+    </div>
+    <div class="tabs" id="tabs">
+        <button class="tab active" data-c="world">World</button>
+        <button class="tab" data-c="technology">Technology</button>
+        <button class="tab" data-c="business">Business</button>
+        <button class="tab" data-c="science">Science</button>
+        <button class="tab" data-c="health">Health</button>
+    </div>
+    <p id="status" class="status-message"></p>
+    <div id="result" class="news-list"></div>
+    <footer class="footer">
+        <span>Nexus API Dashboard</span>
+        <span>Protected by session authentication</span>
+    </footer>
+</main>
+<script src="/dashboard.js"></script>
+<script>
+const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+const queryInput = document.getElementById("newsQuery");
+const activeCategory = () => document.querySelector(".tab.active").dataset.c;
+
+async function load(category = activeCategory()) {
+    const query = queryInput.value.trim();
+    resultEl.innerHTML = "";
+    statusEl.className = "status-message";
+statusEl.textContent = query ? "Searching news..." : "Loading latest news...";
+    const params = new URLSearchParams({ category, search: query });
+    try {
+        const res = await fetch("/api/news?" + params.toString(), { credentials: "same-origin" });
+        if (res.status === 401) { location.replace("/login"); return; }
+        const data = await res.json();
+        if (!res.ok) {
+            statusEl.className = "status-message error";
+            statusEl.textContent = data.message || "News search failed.";
+            return;
+        }
+        if (data.length === 0) {
+            statusEl.textContent = query ? "No articles matched " + query + "." : "No latest news found in this category.";
+            return;
+        }
+        statusEl.textContent = query ? data.length + " matching article(s)" : data.length + " latest articles";
+        resultEl.innerHTML = data.map((article) => {
+            const safe = /^https?:\/\//.test(article.link) ? article.link : "#";
+            const date = article.published ? new Date(article.published).toLocaleString() : "";
+            return '<a class="news-item" href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' +
+                '<h3>' + esc(article.title) + '</h3><p>' + esc(article.description) + '</p>' +
+                '<small>' + esc(date) + ' &middot; BBC News</small></a>';
+        }).join("");
+    } catch (error) {
+        statusEl.className = "status-message error";
+        statusEl.textContent = "Could not reach the server.";
+    }
+}
+
+document.getElementById("tabs").addEventListener("click", (event) => {
+    const tab = event.target.closest(".tab");
+    if (!tab) return;
+    document.querySelectorAll(".tab").forEach((item) => item.classList.remove("active"));
+    tab.classList.add("active");
+    load(tab.dataset.c);
+});
+document.getElementById("newsSearchButton").addEventListener("click", () => load());
+queryInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") load();
+});
+load("world");
+</script>
+</body>
+</html>
+
+
+
+

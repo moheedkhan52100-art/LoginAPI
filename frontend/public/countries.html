@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countries | Nexus API</title>
+    <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body class="tool-page">
+<main class="main-content">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">OPEN COUNTRY DATA</p>
+            <h1>Countries Explorer</h1>
+        </div>
+        <div class="topbar-actions">
+            <a class="back-button" href="/dashboard">&larr; Back</a>
+            <button id="logoutButton" class="logout-button">Log out</button>
+        </div>
+    </header>
+    <div class="search-bar">
+        <input id="q" type="text" placeholder="Search a country, e.g. Pakistan">
+        <button id="searchBtn" class="primary-button">Search</button>
+    </div>
+    <p id="status" class="status-message"></p>
+    <div id="result" class="card-grid"></div>
+    <footer class="footer">
+        <span>Nexus API Dashboard</span>
+        <span>Country data: <a href="https://github.com/mledoze/countries" target="_blank" rel="noreferrer">mledoze/countries</a> Â· ODbL 1.0</span>
+    </footer>
+</main>
+<script src="/dashboard.js"></script>
+<script>
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+const btn = document.getElementById("searchBtn");
+
+async function search() {
+    const q = document.getElementById("q").value.trim();
+btn.disabled = true;
+    statusEl.className = "status-message";
+    statusEl.textContent = "Loading...";
+    resultEl.innerHTML = "";
+    try {
+        const endpoint = q ? "/api/countries?search=" + encodeURIComponent(q) : "/api/countries";
+        const res = await fetch(endpoint, { credentials: "same-origin" });
+        if (res.status === 401) { location.replace("/login"); return; }
+        const data = await res.json();
+        if (!res.ok) { statusEl.className = "status-message error"; statusEl.textContent = data.message; return; }
+        if (data.length === 0) { statusEl.textContent = "No countries found."; return; }
+        statusEl.textContent = data.length + " result(s)";
+        resultEl.innerHTML = data.map((c) => {
+            const cur = Object.values(c.currencies || {}).map((x) => x.name + (x.symbol ? " (" + x.symbol + ")" : "")).join(", ") || "â€”";
+            const lang = Object.values(c.languages || {}).join(", ") || "â€”";
+            return `<div class="country-card"><img src="${esc(c.flags.svg || c.flags.png)}" alt="Flag of ${esc(c.name.common)}">
+                <div class="country-body"><h3>${esc(c.name.common)}</h3>
+                <p><b>Capital:</b> ${esc((c.capital || ["â€”"]).join(", "))}<br>
+                <b>Region:</b> ${esc(c.region || "â€”")}<br>
+                <b>Population:</b> ${(c.population == null ? "Not listed" : Number(c.population).toLocaleString())}<br>
+                <b>Currency:</b> ${esc(cur)}<br>
+                <b>Languages:</b> ${esc(lang)}</p></div></div>`;
+        }).join("");
+    } catch (e) {
+        statusEl.className = "status-message error";
+        statusEl.textContent = "Could not reach the server.";
+    } finally { btn.disabled = false; }
+}
+btn.addEventListener("click", search);
+document.getElementById("q").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+search();
+</script>
+</body>
+</html>
+
+
+
+
+

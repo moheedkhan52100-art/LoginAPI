@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Register</title>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; padding: 32px 20px; display: flex; align-items: center; justify-content: center; background: #f4f7fc; color: #17233e; font-family: Arial, Helvetica, sans-serif; }
+        .box { width: 100%; max-width: 360px; }
+        .box h2 { font-size: 30px; margin: 0 0 10px; color: #17233e; }
+        .box form { margin-top: 30px; }
+        .box input { display: block; width: 100%; padding: 14px; margin: 0 0 20px; border: 1px solid #dce2ee; border-radius: 9px; background: #fff; color: #17233e; font: 15px Arial, Helvetica, sans-serif; outline: none; }
+        .box input:focus { border-color: #4169e1; box-shadow: 0 0 0 3px #4169e11a; }
+        .box input::placeholder { color: #758098; }
+        .box button { width: 100%; padding: 15px; border: 0; border-radius: 9px; background: #4169e1; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .2s, transform .2s; }
+        .box button:hover { background: #2f50bd; transform: translateY(-1px); }
+        .box button:focus-visible, .box a:focus-visible { outline: 3px solid #8db5ff; outline-offset: 3px; }
+        #message { min-height: 21px; margin: 16px 0 0; color: #d93025; font-size: 14px; line-height: 1.5; }
+        .box a { display: block; margin-top: 20px; color: #4169e1; text-align: center; text-decoration: none; font-size: 14px; font-weight: 700; }
+        .box a:hover { text-decoration: underline; }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="box">
+
+        <h2>Create Account</h2>
+
+        <form id="registerForm">
+
+            <input
+                type="text"
+                id="name"
+                placeholder="Full Name"
+                required
+            >
+
+            <input
+                type="email"
+                id="email"
+                placeholder="Email"
+                required
+            >
+
+            <input
+                type="password"
+                id="password"
+                placeholder="Password (minimum 8 characters)"
+                minlength="8"
+                maxlength="72"
+                required
+            >
+
+            <button type="submit">
+                Register
+            </button>
+
+        </form>
+
+        <p id="message"></p>
+
+        <a href="/login">Already have an account?</a>
+
+    </div>
+
+    <script>
+
+        document.getElementById("registerForm")
+        .addEventListener("submit", async (event) => {
+
+            event.preventDefault();
+
+            const name =
+                document.getElementById("name").value;
+
+            const email =
+                document.getElementById("email").value;
+
+            const password =
+                document.getElementById("password").value;
+
+            try {
+
+                const response = await fetch("/api/auth/register", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password
+                    })
+
+                });
+
+                const data = await response.json();
+
+                document.getElementById("message")
+                .innerText = data.message;
+
+                if (response.ok) {
+
+                    setTimeout(() => {
+
+                        window.location.href = "/login";
+
+                    }, 1000);
+
+                }
+
+            } catch (error) {
+
+                document.getElementById("message")
+                .innerText = "Server connection failed";
+
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>

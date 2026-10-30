@@ -1,0 +1,20 @@
+﻿node_modules/
+.env
+.env.*
+!.env.example
+*.loggit --version
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Log files
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
